@@ -40,13 +40,16 @@
         import json
         import asyncio
         import warnings
+        import logging
         import gspread
         from google.oauth2.service_account import Credentials
         from pyscript import document
 
         # Silence noisy OpenSSL warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="cryptography")
-
+        # Also silence common logging noise
+        logging.getLogger("google_auth_httplib2").setLevel(logging.ERROR)
+    
         # Global list to hold our data once loaded
         startup_portfolio = []
 
