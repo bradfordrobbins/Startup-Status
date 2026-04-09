@@ -35,47 +35,84 @@
         <p id="status">Loading portfolio from Google Sheets...</p>
     </main>
 
-    <script type="py" config="pyscript.json">
-        from pyscript import document
-        from google import genai
-        import json, asyncio
+<script type="py" config="pyscript.json">
+        import js
+        import json
+        import asyncio
         import warnings
-        # silence noisy OpenSSL warnings
+        import gspread
+        from google.oauth2.service_account import Credentials
+        from pyscript import document
+
+        # Silence noisy OpenSSL warnings
         warnings.filterwarnings("ignore", category=UserWarning, module="cryptography")
 
-        # 1. INITIALIZE DATA
-        async def main_workflow(event):
-            btn = document.querySelector("#update-btn")
-            btn.aria_busy = "true"
+        # Global list to hold our data once loaded
+        startup_portfolio = []
+
+        def get_saved_keys():
+            """Pulls the Gemini Key and Google JSON from browser/iPhone storage"""
+            gemini_key = js.localStorage.getItem('gemini_key')
+            g_json_str = js.localStorage.getItem('g_json')
             
-            # Logic: 
-            # 1. Connect to GSpread using your stored JSON Key
-            # 2. Loop through rows
-            # 3. Use 'URL' and 'Best Source' as Gemini starting points
-            # 4. If a PDF is found, upload to Drive
-            # 5. Update Sheet and re-render UI
+            if not gemini_key or not g_json_str:
+                js.console.warn("Keys missing in local storage. Please click ⚙️ to set them.")
+                return None, None
             
-            await asyncio.sleep(1) # Simulated execution
-            btn.aria_busy = "false"
-            render_ui()
+            try:
+                return gemini_key, json.loads(g_json_str)
+            except Exception as e:
+                js.console.error(f"Error parsing JSON Key: {e}")
+                return None, None
+
+        async def load_from_sheets():
+            """The actual connection to Google Sheets"""
+            global startup_portfolio
+            document.querySelector("#status").innerText = "Connecting to Google..."
+            
+            gemini_key, g_json = get_saved_keys()
+            if not g_json:
+                document.querySelector("#status").innerText = "⚠️ Missing Settings! Click the ⚙️ icon."
+                return
+
+            try:
+                # Authenticate with Google
+                scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                creds = Credentials.from_service_account_info(g_json, scopes=scopes)
+                client = gspread.authorize(creds)
+                
+                # Open your specific sheet
+                sheet = client.open("Startup-Status").sheet1
+                rows = sheet.get_all_records()
+                
+                # Standardize columns to match our UI (Name, URL, Summary, Source, PDF, Status)
+                startup_portfolio = []
+                for r in rows:
+                    startup_portfolio.append({
+                        "name": r.get("Name", "Unnamed"),
+                        "url": r.get("URL", "#"),
+                        "summary": r.get("Summary", "No summary yet."),
+                        "source": r.get("Best Source", "#"),
+                        "pdf": r.get("Latest PDF", ""),
+                        "is_new": str(r.get("Status", "")).lower() == "new"
+                    })
+                
+                document.querySelector("#status").style.display = "none"
+                render_ui()
+                
+            except Exception as e:
+                document.querySelector("#status").innerText = f"❌ Connection Error: {str(e)}"
+                js.console.error(f"Sheet Error: {e}")
 
         def render_ui():
-            # This would pull from your actual Google Sheet list
-            startups = [
-                {
-                    "name": "Phizzle", 
-                    "url": "https://phizzle.com", 
-                    "summary": "Partnered with LabWare in April 2026 to automate lab data.", 
-                    "source": "https://businesswire.com/news/...", 
-                    "pdf": "https://drive.google.com/...",
-                    "is_new": True
-                }
-            ]
-            
+            """Renders the cards based on the startup_portfolio list"""
             html = ""
-            for s in startups:
+            if not startup_portfolio:
+                html = "<p>No startups found in sheet. Add data to Column A and B!</p>"
+            
+            for s in startup_portfolio:
                 badge = '<span class="new-badge">NEW</span>' if s['is_new'] else ""
-                pdf_btn = f'<a href="{s["pdf"]}" class="pdf-link">📄 View Investor PDF</a>' if s['pdf'] else ""
+                pdf_btn = f'<a href="{s["pdf"]}" class="pdf-link" target="_blank">📄 View Investor PDF</a>' if s['pdf'] else ""
                 
                 html += f"""
                 <article>
@@ -85,14 +122,26 @@
                     </header>
                     <p>{s['summary']}</p>
                     <footer>
-                        <small>Source: <a href="{s['source']}">Deep Dive ↗</a></small>
+                        <small>Source: <a href="{s['source']}" target="_blank">Deep Dive ↗</a></small>
                         <div style="margin-top:10px">{pdf_btn}</div>
                     </footer>
                 </article>
                 """
             document.querySelector("#dashboard").innerHTML = html
 
-        render_ui()
+        async def main_workflow(event):
+            """Triggered by the 'Update All' button"""
+            btn = document.querySelector("#update-btn")
+            btn.aria_busy = "true"
+            
+            # This is where your Gemini research loop would live
+            # For now, let's just refresh the data from the sheet
+            await load_from_sheets()
+            
+            btn.aria_busy = "false"
+
+        # Initialize the app on load
+        asyncio.ensure_future(load_from_sheets())
     </script>
 
     <script>
