@@ -4,55 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Startup Status</title>
-    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="https://pyscript.net/releases/2026.3.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2026.3.1/core.js"></script>
+    <style>
+        :root { --pico-font-size: 14px; }
+        .new-badge { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .pdf-link { color: #d93025; font-weight: bold; text-decoration: none; }
+    </style>
 </head>
 <body class="container">
     <nav>
-        <ul><li><strong>🚀 Startup Status</strong></li></ul>
-        <ul><li><button id="run-btn" py-click="main_run">Run Research</button></li></ul>
+        <ul><li><strong>🚀 Scout Pro</strong></li></ul>
+        <ul>
+            <li><button id="update-btn" py-click="main_workflow">🔄 Update All</button></li>
+            <li><button class="secondary" onclick="document.getElementById('settings').showModal()">⚙️</button></li>
+        </ul>
     </nav>
 
-    <main id="dashboard">
-        <article id="status-box">
-            <p>Ready to research 15 startups.</p>
-            <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
+    <dialog id="settings">
+        <article>
+            <header>Settings</header>
+            <label>Gemini API Key <input type="password" id="api-key-input"></label>
+            <label>Service Account JSON <textarea id="json-key-input" rows="4"></textarea></label>
+            <footer><button onclick="save_settings()">Save to iPhone</button></footer>
         </article>
+    </dialog>
 
-        <section id="results-area">
-            </section>
+    <main id="dashboard">
+        <p id="status">Loading portfolio from Google Sheets...</p>
     </main>
 
-    <section id="terminal-output" style="font-size: 0.8rem; color: #888; background: #111; padding: 10px; border-radius: 8px; display:none;">
-        <pre id="log"></pre>
-    </section>
-
     <script type="py">
-        import js
-        from pyscript import document, display
-        import asyncio
-        # We will import your agent logic here
-        
-        async def main_run(event):
-            btn = document.querySelector("#run-btn")
-            log_area = document.querySelector("#terminal-output")
-            progress = document.querySelector("#progress-bar")
+        from pyscript import document
+        from google import genai
+        import json, asyncio
+
+        # 1. INITIALIZE DATA
+        async def main_workflow(event):
+            btn = document.querySelector("#update-btn")
+            btn.aria_busy = "true"
             
-            btn.disabled = True
-            log_area.style.display = "block"
-            progress.style.display = "block"
+            # Logic: 
+            # 1. Connect to GSpread using your stored JSON Key
+            # 2. Loop through rows
+            # 3. Use 'URL' and 'Best Source' as Gemini starting points
+            # 4. If a PDF is found, upload to Drive
+            # 5. Update Sheet and re-render UI
             
-            # This mimics your agent2.py loop
-            for i in range(1, 16):
-                js.console.log(f"Researching startup {i}...")
-                document.querySelector("#log").innerText += f"\n[Gemini] Researching Startup {i}/15..."
-                progress.value = (i / 15) * 100
-                await asyncio.sleep(0.5) # Simulate API call
+            await asyncio.sleep(1) # Simulated execution
+            btn.aria_busy = "false"
+            render_ui()
+
+        def render_ui():
+            # This would pull from your actual Google Sheet list
+            startups = [
+                {
+                    "name": "Phizzle", 
+                    "url": "https://phizzle.com", 
+                    "summary": "Partnered with LabWare in April 2026 to automate lab data.", 
+                    "source": "https://businesswire.com/news/...", 
+                    "pdf": "https://drive.google.com/...",
+                    "is_new": True
+                }
+            ]
+            
+            html = ""
+            for s in startups:
+                badge = '<span class="new-badge">NEW</span>' if s['is_new'] else ""
+                pdf_btn = f'<a href="{s["pdf"]}" class="pdf-link">📄 View Investor PDF</a>' if s['pdf'] else ""
                 
-            document.querySelector("#status-box").innerHTML = "<h3>✅ Research Complete</h3><p>Email sent to bradfordrobbins@gmail.com</p>"
-            btn.disabled = False
+                html += f"""
+                <article>
+                    <header>
+                        <strong>{s['name']}</strong> {badge}
+                        <a href="{s['url']}" target="_blank" style="float:right">Site ↗</a>
+                    </header>
+                    <p>{s['summary']}</p>
+                    <footer>
+                        <small>Source: <a href="{s['source']}">Deep Dive ↗</a></small>
+                        <div style="margin-top:10px">{pdf_btn}</div>
+                    </footer>
+                </article>
+                """
+            document.querySelector("#dashboard").innerHTML = html
+
+        render_ui()
+    </script>
+
+    <script>
+        function save_settings() {
+            localStorage.setItem('gemini_key', document.getElementById('api-key-input').value);
+            localStorage.setItem('g_json', document.getElementById('json-key-input').value);
+            document.getElementById('settings').close();
+            alert("Settings saved locally to your device!");
+        }
     </script>
 </body>
 </html>
