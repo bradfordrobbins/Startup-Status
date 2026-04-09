@@ -130,7 +130,8 @@ def render_ui():
                 if pdf_url and "drive.google.com" in pdf_url and "/file/d/" in pdf_url:
                     try:
                         file_id = pdf_url.split("/file/d/")[1].split("/")[0]
-                        pdf_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        # 'preview' is better than 'view' or 'uc' for iOS Safari
+                        pdf_url = f"https://drive.google.com/file/d/{file_id}/preview"
                     except Exception:
                         pass # Keep original link if parsing fails
 
