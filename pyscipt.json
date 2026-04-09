@@ -1,5 +1,10 @@
 {
-    "packages": ["google-genai", "python-dotenv"],
-    "terminal": false,
-    "plugins": []
+    "packages": [
+        "google-genai",
+        "protobuf",
+        "python-dotenv",
+        "gspread",
+        "google-auth"
+    ],
+    "terminal": true
 }
