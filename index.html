@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startup Status</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://pyscript.net/releases/2026.3.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2026.3.1/core.js"></script>
+</head>
+<body class="container">
+    <nav>
+        <ul><li><strong>🚀 Startup Status</strong></li></ul>
+        <ul><li><button id="run-btn" py-click="main_run">Run Research</button></li></ul>
+    </nav>
+
+    <main id="dashboard">
+        <article id="status-box">
+            <p>Ready to research 15 startups.</p>
+            <progress id="progress-bar" value="0" max="100" style="display:none;"></progress>
+        </article>
+
+        <section id="results-area">
+            </section>
+    </main>
+
+    <section id="terminal-output" style="font-size: 0.8rem; color: #888; background: #111; padding: 10px; border-radius: 8px; display:none;">
+        <pre id="log"></pre>
+    </section>
+
+    <script type="py">
+        import js
+        from pyscript import document, display
+        import asyncio
+        # We will import your agent logic here
+        
+        async def main_run(event):
+            btn = document.querySelector("#run-btn")
+            log_area = document.querySelector("#terminal-output")
+            progress = document.querySelector("#progress-bar")
+            
+            btn.disabled = True
+            log_area.style.display = "block"
+            progress.style.display = "block"
+            
+            # This mimics your agent2.py loop
+            for i in range(1, 16):
+                js.console.log(f"Researching startup {i}...")
+                document.querySelector("#log").innerText += f"\n[Gemini] Researching Startup {i}/15..."
+                progress.value = (i / 15) * 100
+                await asyncio.sleep(0.5) # Simulate API call
+                
+            document.querySelector("#status-box").innerHTML = "<h3>✅ Research Complete</h3><p>Email sent to bradfordrobbins@gmail.com</p>"
+            btn.disabled = False
+    </script>
+</body>
+</html>
