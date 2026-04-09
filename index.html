@@ -12,6 +12,12 @@
         .new-badge { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
         .pdf-link { color: #d93025; font-weight: bold; text-decoration: none; }
     </style>
+    <style>
+    /* Hides the red warning/error toast boxes from the UI */
+    py-script-status, .py-error, .py-warning {
+        display: none !important;
+    }
+</style>
 </head>
 <body class="container">
     <nav>
@@ -49,6 +55,8 @@
         warnings.filterwarnings("ignore", category=UserWarning, module="cryptography")
         # Also silence common logging noise
         logging.getLogger("google_auth_httplib2").setLevel(logging.ERROR)
+        # Set an environment variable that some libraries check to reduce log noise
+        os.environ["PYTHONWARNINGS"] = "ignore"
     
         # Global list to hold our data once loaded
         startup_portfolio = []
