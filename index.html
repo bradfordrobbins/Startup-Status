@@ -39,8 +39,8 @@
         </article>
     </dialog>
 
+    <p id="status" style="text-align: center; font-style: italic;">Loading portfolio from Google Sheets...</p>
     <main id="dashboard">
-        <p id="status">Loading portfolio from Google Sheets...</p>
     </main>
 
 <script type="py" config="pyscript.json">
@@ -149,8 +149,11 @@
             btn = document.querySelector("#update-btn")
             status_text = document.querySelector("#status")
             btn.aria_busy = "true"
-            status_text.style.display = "block"
-            
+            # Check if the element actually exists before trying to style it
+            if status_text:
+                status_text.style.display = "block"
+                status_text.innerText = "Initializing research..."     
+    
             gemini_key, g_json = get_saved_keys()
             if not gemini_key:
                 status_text.innerText = "⚠️ Missing Gemini Key!"
