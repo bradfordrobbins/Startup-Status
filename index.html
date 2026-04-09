@@ -157,19 +157,84 @@ def render_ui():
             # Inject the final HTML into the dashboard
             document.querySelector("#dashboard").innerHTML = html
 
-        async def main_workflow(event):
+async def main_workflow(event):
             """Triggered by the 'Update All' button"""
             btn = document.querySelector("#update-btn")
+            status_text = document.querySelector("#status")
             btn.aria_busy = "true"
+            status_text.style.display = "block"
             
-            # This is where your Gemini research loop would live
-            # For now, let's just refresh the data from the sheet
-            await load_from_sheets()
-            
-            btn.aria_busy = "false"
+            gemini_key, g_json = get_saved_keys()
+            if not gemini_key:
+                status_text.innerText = "⚠️ Missing Gemini Key! Click ⚙️."
+                btn.aria_busy = "false"
+                return
 
-        # Initialize the app on load
-        asyncio.ensure_future(load_from_sheets())
+            # Initialize Gemini Client
+            client = genai.Client(api_key=gemini_key)
+
+            try:
+                # 1. Re-connect to Google Sheets
+                scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                creds = Credentials.from_service_account_info(g_json, scopes=scopes)
+                gc = gspread.authorize(creds)
+                sheet = gc.open("Startup-Status").sheet1
+                all_data = sheet.get_all_records()
+
+                # 2. Loop through each startup (starting at row 2)
+                for i, row in enumerate(all_data, start=2):
+                    name = row.get("Name")
+                    status_text.innerText = f"🔍 Researching {name}..."
+                    
+                    # Gemini Search & Compare Prompt
+                    prompt = f"""
+                    Research the startup '{name}'. 
+                    Official Site: {row.get('URL')}
+                    Last Best Source: {row.get('Best Source')}
+                    Current Summary: {row.get('Summary')}
+
+                    Task: 
+                    1. Find any major news from 2025 or 2026 (funding, product, hires).
+                    2. If new info exists, write a 2-3 sentence updated summary.
+                    3. If no significant changes, return 'NO_CHANGE'.
+                    4. Identify the URL of the best source you found.
+
+                    Output Format: 
+                    SUMMARY: [Your text]
+                    SOURCE: [URL]
+                    """
+
+                    # Execute Gemini Research
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash", 
+                        contents=prompt,
+                        config={"tools": [{"google_search": {}}]}
+                    )
+                    
+                    result = response.text
+                    
+                    if "NO_CHANGE" not in result:
+                        # Parse the result (simple split)
+                        try:
+                            new_summary = result.split("SUMMARY:")[1].split("SOURCE:")[0].strip()
+                            new_source = result.split("SOURCE:")[1].strip()
+                            
+                            # Update the Google Sheet row
+                            # Assuming Column C is Summary, D is Best Source, E is PDF, F is Status
+                            sheet.update_cell(i, 3, new_summary)
+                            sheet.update_cell(i, 4, new_source)
+                            sheet.update_cell(i, 6, "New") # Column F
+                        except:
+                            js.console.log(f"Gemini output for {name} was messy.")
+
+                status_text.innerText = "✅ All research updated!"
+                await load_from_sheets() # Refresh the dashboard view
+                
+            except Exception as e:
+                status_text.innerText = f"❌ Error: {str(e)}"
+                js.console.error(e)
+
+            btn.aria_busy = "false"
     </script>
 
     <script>
