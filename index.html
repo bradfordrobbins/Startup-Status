@@ -79,23 +79,25 @@
                 return None, None
 
         async def load_from_sheets():
-            """The actual connection to Google Sheets"""
             global startup_portfolio
-            document.querySelector("#status").innerText = "Connecting to Google..."
+            status_el = document.querySelector("#status")
+            status_el.innerText = "Step 1: Checking Local Storage..."
             
             gemini_key, g_json = get_saved_keys()
             if not g_json:
-                document.querySelector("#status").innerText = "⚠️ Missing Settings! Click the ⚙️ icon."
+                status_el.innerHTML = "⚠️ <strong>Settings Missing:</strong> Click ⚙️ and paste your JSON."
                 return
 
             try:
-                # Authenticate with Google
+                status_el.innerText = "Step 2: Connecting to Google API..."
                 scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
                 creds = Credentials.from_service_account_info(g_json, scopes=scopes)
-                client = gspread.authorize(creds)
+                gc = gspread.authorize(creds)
                 
-                # Open your specific sheet
-                sheet = client.open("Startup-Status").sheet1
+                status_el.innerText = "Step 3: Opening 'Startup-Status' Sheet..."
+                sheet = gc.open("Startup-Status").sheet1
+                
+                status_el.innerText = "Step 4: Fetching Rows..."
                 rows = sheet.get_all_records()
                 
                 # Standardize columns to match our UI (Name, URL, Summary, Source, PDF, Status)
@@ -110,13 +112,15 @@
                         "is_new": str(r.get("Status", "")).lower() == "new"
                     })
                 
-                document.querySelector("#status").style.display = "none"
+                status_el.style.display = "none"
                 render_ui()
                 
             except Exception as e:
-                document.querySelector("#status").innerText = f"❌ Connection Error: {str(e)}"
-                js.console.error(f"Sheet Error: {e}")
+                # This will show the real error on your iPhone screen
+                status_el.innerHTML = f"❌ <strong>Error:</strong> {str(e)}"
+                js.console.error(f"Full Error: {e}")
 
+    
 def render_ui():
             """Renders the cards based on the startup_portfolio list"""
             html = ""
