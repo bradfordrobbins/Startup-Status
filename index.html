@@ -107,16 +107,38 @@
                 document.querySelector("#status").innerText = f"❌ Connection Error: {str(e)}"
                 js.console.error(f"Sheet Error: {e}")
 
-        def render_ui():
+def render_ui():
             """Renders the cards based on the startup_portfolio list"""
             html = ""
-            if not startup_portfolio:
-                html = "<p>No startups found in sheet. Add data to Column A and B!</p>"
             
+            # --- Empty State Check ---
+            if not startup_portfolio:
+                html = """
+                <article>
+                    <p><strong>No startups found.</strong></p>
+                    <p>Make sure your Google Sheet 'Startup-Status' has data in the 'Name' and 'URL' columns!</p>
+                </article>
+                """
+                document.querySelector("#dashboard").innerHTML = html
+                return
+
+            # --- Loop through Startups ---
             for s in startup_portfolio:
-                badge = '<span class="new-badge">NEW</span>' if s['is_new'] else ""
-                pdf_btn = f'<a href="{s["pdf"]}" class="pdf-link" target="_blank">📄 View Investor PDF</a>' if s['pdf'] else ""
+                pdf_url = s['pdf']
                 
+                # 1. Clean up Google Drive links if they exist
+                if pdf_url and "drive.google.com" in pdf_url and "/file/d/" in pdf_url:
+                    try:
+                        file_id = pdf_url.split("/file/d/")[1].split("/")[0]
+                        pdf_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                    except Exception:
+                        pass # Keep original link if parsing fails
+
+                # 2. Build the visual components
+                pdf_btn = f'<a href="{pdf_url}" class="pdf-link" target="_blank">📄 View Investor PDF</a>' if pdf_url else ""
+                badge = '<span class="new-badge">NEW</span>' if s['is_new'] else ""
+                
+                # 3. Assemble the card
                 html += f"""
                 <article>
                     <header>
@@ -130,6 +152,8 @@
                     </footer>
                 </article>
                 """
+            
+            # Inject the final HTML into the dashboard
             document.querySelector("#dashboard").innerHTML = html
 
         async def main_workflow(event):
