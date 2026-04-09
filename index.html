@@ -39,6 +39,9 @@
         from pyscript import document
         from google import genai
         import json, asyncio
+        import warnings
+        # silence noisy OpenSSL warnings
+        warnings.filterwarnings("ignore", category=UserWarning, module="cryptography")
 
         # 1. INITIALIZE DATA
         async def main_workflow(event):
