@@ -25,6 +25,7 @@
     <nav>
         <ul><li><strong>Startup 🚀 Status</strong></li></ul>
         <ul>
+            <li><button class="secondary" id="clear-btn" py-click="clear_badges" title="Clear New Badges">✅ Clear</button></li>
             <li><button id="update-btn" py-click="main_workflow">🔄 Update All</button></li>
             <li><button class="secondary" onclick="document.getElementById('settings').showModal()">⚙️</button></li>
         </ul>
@@ -144,6 +145,42 @@
                 </article>
                 """
             document.querySelector("#dashboard").innerHTML = html
+
+        async def clear_badges(event):
+            """Removes 'New' status from all rows in the Google Sheet"""
+            btn = document.querySelector("#clear-btn")
+            status_text = document.querySelector("#status")
+            btn.aria_busy = "true"
+            
+            gemini_key, g_json = get_saved_keys()
+            if not g_json: return
+
+            try:
+                # Connect to Sheet
+                scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                creds = Credentials.from_service_account_info(g_json, scopes=scopes)
+                gc = gspread.authorize(creds)
+                sheet = gc.open("Startup-Status").sheet1
+                
+                # Find all 'New' entries in Column F (Column 6)
+                # We start from row 2 to skip headers
+                cells = sheet.findall("New", in_column=6)
+                
+                if cells:
+                    for cell in cells:
+                        sheet.update_cell(cell.row, cell.col, "") # Clear the cell
+                    
+                    if status_text:
+                        status_text.style.display = "block"
+                        status_text.innerText = f"Cleared {len(cells)} badges."
+                
+                # Refresh the UI
+                await load_from_sheets()
+                
+            except Exception as e:
+                js.console.error(f"Clear error: {e}")
+            
+            btn.aria_busy = "false"
 
         async def main_workflow(event):
             btn = document.querySelector("#update-btn")
