@@ -1,0 +1,5 @@
+{
+    "packages": ["google-genai", "python-dotenv"],
+    "terminal": false,
+    "plugins": []
+}
